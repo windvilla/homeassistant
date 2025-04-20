@@ -1,0 +1,53 @@
+
+blueprint:
+  name: Zeitintervall Basis
+  description: Führt eine Aktion in festem Intervall innerhalb eines täglichen Zeitfensters aus.
+  domain: automation
+  input:
+    start_time:
+      name: Startzeit
+      selector:
+        time:
+    end_time:
+      name: Endzeit
+      selector:
+        time:
+    interval:
+      name: Intervall (Minuten)
+      default: 15
+      selector:
+        number:
+          min: 1
+          max: 60
+          unit_of_measurement: min
+          mode: slider
+    action:
+      name: Aktion
+      selector:
+        action: {}
+
+mode: single
+
+trigger:
+  - platform: time_pattern
+    minutes: "/1"
+
+condition:
+  - condition: template
+    value_template: >
+      {% set now = now() %}
+      {% set start = today_at(inputs.start_time) %}
+      {% set end = today_at(inputs.end_time) %}
+      {% set t = now %}
+      {% if end < start %}
+        {% set end = end + timedelta(days=1) %}
+        {% if now < start %}
+          {% set t = now + timedelta(days=1) %}
+        {% endif %}
+      {% endif %}
+      {% set delta = ((t - start).total_seconds() // 60) | int %}
+      {{ start <= t < end and (delta % inputs.interval == 0) }}
+
+action:
+  - choose: []
+    default: !input action
